@@ -1,6 +1,6 @@
 import React from "react";
 import Counter from "./features/counter/counter";
-import ProductList from "./features/ProductList/ProductList";
+import ProductList from "./features/ProductList/Components/ProductList";
 import Home from "./pages/Home";
 import LoginPage from "./pages/LoginPage";
 
@@ -15,6 +15,7 @@ import SignUpPage from "./pages/SignUpPage";
 
 import CartPage from "./pages/CartPage";
 import CheckOutPage from "./pages/CheckOutPage";
+import ProductDetailPage from "./pages/ProductDetailPage";
 
 const router = createBrowserRouter([
   {
@@ -37,6 +38,12 @@ const router = createBrowserRouter([
     path: "checkout",
     element: <CheckOutPage />,
   },
+  
+  {
+    path: "product-detail",
+    element: <ProductDetailPage />,
+  },
+
 ]);
 const App = () => {
   return (
