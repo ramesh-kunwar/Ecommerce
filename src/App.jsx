@@ -14,6 +14,7 @@ import {
 import SignUpPage from "./pages/SignUpPage";
 
 import CartPage from "./pages/CartPage";
+import CheckOutPage from "./pages/CheckOutPage";
 
 const router = createBrowserRouter([
   {
@@ -31,6 +32,10 @@ const router = createBrowserRouter([
   {
     path: "cart",
     element: <CartPage />,
+  },
+  {
+    path: "checkout",
+    element: <CheckOutPage />,
   },
 ]);
 const App = () => {
