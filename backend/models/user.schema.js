@@ -51,6 +51,7 @@ userSchema.methods = {
   comparePassword: async function (enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
   },
+  // generate JWT TOKEN
   getJwtToken: function () {
     return JWT.sign(
       {
@@ -62,6 +63,21 @@ userSchema.methods = {
         expiresIn: config.JWT_Expiry,
       }
     );
+  },
+
+  generateForgotPasswordToken: function () {
+    const forgotToken = crypto.randomBytes(20).toString("hex");
+
+    // step 1 - save to DB
+    this.forgotPasswordToken = crypto
+      .createHash("sha256")
+      .update(forgotToken)
+      .digest("hex");
+
+    this.forgotPasswordExpiry = Date.now() + 20 + 60 * 1000;
+    // step 2 - return values to user
+
+    return forgotToken;
   },
 };
 
