@@ -1,6 +1,7 @@
 import asyncHandler from "../services/asyncHandler";
 import User from "../models/user.schema";
 import CustomError from "../utils/customError";
+import mailHelper from "../utils/mailHelper";
 
 export const cookieOptions = {
   expire: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
@@ -101,6 +102,58 @@ export const logout = asyncHandler(async (req, res) => {
 
   res.status(200).json({
     success: true,
-    message: "Logged Out"
+    message: "Logged Out",
   });
+});
+
+/************************************************************************
+ * @FORGOT_PASSWORD
+ * @route http://localhost:4000/api/auth/password/forgot
+ * @description User will submit email and we will generate a token
+ * @params email
+ * @returns success message - email send
+ *************************************************************************/
+
+export const forgotPassword = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    throw new CustomError("User not found with this email", 404);
+  }
+
+  const resetToken = user.generateForgotPasswordToken();
+
+  // we have added token - so we have to save it
+  await user.save({ validateBeforeSave: false }); // we are using validateBeforeSave: false because we are not validating the whole user object
+
+  // send email
+
+  const resetUrl = `${req.protocol}://${req.get(
+    "host"
+  )}/api/auth/password/reset/${resetToken}`; // if we do req.params, we will get the token
+
+  try {
+    // we are doing try catch because there is a chance that mailnator() will not work or email will not be sent
+
+    await mailHelper({
+      email: user.email,
+      subject: "Password Reset Token",
+      text: `Your password reset token is as follows: \n\n ${resetUrl}`,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Email sent to ${user.email}`,
+    });
+  } catch (error) {
+    // we have to reset the token and expiry if the email is not sent -- rollback
+    user.forgotPasswordToken = undefined;
+    user.forgotPasswordExpiry = undefined;
+
+    await user.save({ validateBeforeSave: false });
+
+    throw new CustomError(error.message || "Email sent failure", 500);
+  }
 });
