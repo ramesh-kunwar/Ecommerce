@@ -2,6 +2,7 @@ import asyncHandler from "../services/asyncHandler";
 import User from "../models/user.schema";
 import CustomError from "../utils/customError";
 import mailHelper from "../utils/mailHelper";
+import crypto from "crypto";
 
 export const cookieOptions = {
   expire: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
@@ -157,3 +158,59 @@ export const forgotPassword = asyncHandler(async (req, res) => {
     throw new CustomError(error.message || "Email sent failure", 500);
   }
 });
+
+/************************************************************************
+ * @RESET_PASSWORD
+ * @route http://localhost:4000/api/auth/password/reset/:resetPasswordToken
+ * @description User will be able to reset password based on url token
+ * @params token from url, password and confirmPassword
+ * @returns success message - password reset successful
+ * *************************************************************************/
+
+export const resetPassword = asyncHandler(async (req, res) => {
+  const { token: resetToken } = req.params;
+  const { password, confirmPassword } = req.body;
+
+  // we have encrypted the token in the model - so we have to decrypt it or again encrypt it to match it with the token in the DB
+
+  const resetPasswordToken = crypto
+    .createHash("sha256")
+    .update(resetToken)
+    .digest("hex");
+
+  // i want to find a user based on resetPasswordToken
+
+  const user = await User.findOne({
+    forgotPasswordToken: resetPasswordToken,
+    forgotPasswordExpiry: { $gt: Date.now() }, // it will check if the forgotPasswordExpiry is greater than the current date
+  });
+
+  if (!user) {
+    throw new CustomError("Password token is invalid or expired", 400);
+  }
+
+  if (password !== confirmPassword) {
+    throw new CustomError("Password does not match", 400);
+  }
+
+  user.password = password;
+  // we have already reset the password - so we have to reset the token and expiry, we don't need them anymore - so we have to delete them
+  user.forgotPasswordToken = undefined;
+  user.forgotPasswordExpiry = undefined;
+
+  await user.save();
+
+  // create token and send it to the user
+  const token = user.getJWTToken();
+
+  user.password = undefined;
+
+  res.cookie("token", token, cookieOptions);
+
+  res.status(200).json({
+    success: true,
+    message: "Password reset successful",
+  });
+});
+
+// TODO: create a controller for changing password
